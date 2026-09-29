@@ -306,9 +306,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _toggle(
                   Icons.download_for_offline_outlined,
                   '优先缓存下一集',
-                  prefs.preloadNextEpisode,
+                  prefs.prefetchNextEpisode,
                   (v) =>
-                      app.setPreferences(prefs.copyWith(preloadNextEpisode: v)),
+                      app.setPreferences(prefs.copyWith(prefetchNextEpisode: v)),
                 ),
               ]),
               if (isWindowsDesktop)
