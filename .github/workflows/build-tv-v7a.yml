@@ -41,7 +41,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          KEYSTORE_PATH="android/app/minireel-release.jks"
+          KEYSTORE_PATH="$GITHUB_WORKSPACE/android/app/minireel-release.jks"
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "Using existing keystore from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
