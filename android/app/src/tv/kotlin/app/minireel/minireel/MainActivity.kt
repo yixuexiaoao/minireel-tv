@@ -34,6 +34,22 @@ class MainActivity : FlutterActivity() {
                                 result.error("FILE_NOT_FOUND", "File not found: $path", null)
                                 return@setMethodCallHandler
                             }
+                            file.setReadable(true, false)
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                if (!packageManager.canRequestPackageInstalls()) {
+                                    try {
+                                        val manageIntent = Intent(
+                                            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                            Uri.parse("package:${applicationContext.packageName}")
+                                        ).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        startActivity(manageIntent)
+                                    } catch (_: Exception) {}
+                                }
+                            }
+
                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -48,6 +64,13 @@ class MainActivity : FlutterActivity() {
                                 Uri.fromFile(file)
                             }
                             intent.setDataAndType(uri, "application/vnd.android.package-archive")
+
+                            val resInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                            for (resolveInfo in resInfoList) {
+                                val pkgName = resolveInfo.activityInfo.packageName
+                                grantUriPermission(pkgName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+
                             startActivity(intent)
                             result.success(true)
                         } catch (e: Exception) {

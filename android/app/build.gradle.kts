@@ -73,6 +73,8 @@ android {
                 storePassword = releaseStorePassword
                 keyAlias = releaseAlias
                 keyPassword = releaseKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
     }

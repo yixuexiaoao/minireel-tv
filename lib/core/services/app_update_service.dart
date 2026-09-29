@@ -210,8 +210,18 @@ class AppUpdateService {
     required void Function(int received, int total) onProgress,
     CancelToken? cancelToken,
   }) async {
-    final tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/update.apk';
+    final Directory baseDir;
+    if (Platform.isAndroid) {
+      final extDirs = await getExternalCacheDirectories();
+      if (extDirs != null && extDirs.isNotEmpty) {
+        baseDir = extDirs.first;
+      } else {
+        baseDir = await getTemporaryDirectory();
+      }
+    } else {
+      baseDir = await getTemporaryDirectory();
+    }
+    final filePath = '${baseDir.path}/update.apk';
     final file = File(filePath);
     if (await file.exists()) {
       try {
