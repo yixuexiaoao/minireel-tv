@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
@@ -418,49 +416,29 @@ class _TVDialogButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final bg = primary ? colors.primary : Colors.white12;
+
     return TVFocusable(
       autofocus: autofocus,
       onTap: onTap,
-      scaleFactor: 1.05,
-      builder: (context, focused, child) {
-        final Color bg;
-        if (primary) {
-          bg = focused ? colors.primary : colors.primary.withOpacity(0.85);
-        } else {
-          bg = focused ? Colors.white24 : Colors.white10;
-        }
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: focused ? Colors.white : Colors.transparent,
-              width: 2,
-            ),
-            boxShadow: focused
-                ? [
-                    BoxShadow(
-                      color: primary
-                          ? colors.primary.withOpacity(0.5)
-                          : Colors.black45,
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                    )
-                  ]
-                : null,
+      radius: 8,
+      scale: 1.05,
+      borderWidth: 2,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14.5,
+            fontWeight: primary ? FontWeight.bold : FontWeight.w500,
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14.5,
-              fontWeight: primary ? FontWeight.bold : FontWeight.w500,
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
