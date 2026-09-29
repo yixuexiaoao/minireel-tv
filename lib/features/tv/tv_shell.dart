@@ -82,6 +82,9 @@ class _TVAppShellState extends State<TVAppShell> {
   }
 
   Future<void> _checkAutoUpdate() async {
+    final app = AppScope.read(context);
+    if (!app.preferences.autoCheckUpdate) return;
+
     // 启动延迟 2.5 秒，先确保首屏界面和短剧库就绪
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted || _openingPlayer) return;

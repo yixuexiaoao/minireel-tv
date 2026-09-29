@@ -24,6 +24,13 @@ final class Preferences {
     this.desktopVolume = .75,
     this.prefetchNextEpisode = true,
     this.remoteKeyMap,
+    this.controlsAutoHideSeconds = 5,
+    this.videoFitMode = 'contain',
+    this.seekStepSeconds = 10,
+    this.skipIntroSeconds = 0,
+    this.skipOutroSeconds = 0,
+    this.autoCheckUpdate = true,
+    this.accentColorKey = 'default',
   });
 
   final AppAppearance appearance;
@@ -41,6 +48,20 @@ final class Preferences {
   final bool prefetchNextEpisode;
   /// 遥控器按键映射。null 表示用默认映射（未自定义）。
   final RemoteKeyMap? remoteKeyMap;
+  /// 播放控制栏自动隐藏时间（秒），0 表示从不自动隐藏。
+  final int controlsAutoHideSeconds;
+  /// 视频画面填充比例：'contain' (原始比例含黑边), 'cover' (撑满裁切沉浸), 'fill' (拉伸铺满全屏)
+  final String videoFitMode;
+  /// 遥控器方向键左右快进/快退步长（秒）
+  final int seekStepSeconds;
+  /// 自动跳过片头时长（秒），0 表示不跳过
+  final int skipIntroSeconds;
+  /// 自动跳过片尾时长（秒），0 表示不跳过
+  final int skipOutroSeconds;
+  /// 启动时是否自动检查新版本
+  final bool autoCheckUpdate;
+  /// 界面强调色主题：'default'(经典玫红), 'orange'(活力橙), 'blue'(极客蓝), 'green'(翡翠绿), 'purple'(优雅紫)
+  final String accentColorKey;
 
   Preferences copyWith({
     AppAppearance? appearance,
@@ -57,6 +78,13 @@ final class Preferences {
     double? desktopVolume,
     bool? prefetchNextEpisode,
     RemoteKeyMap? remoteKeyMap,
+    int? controlsAutoHideSeconds,
+    String? videoFitMode,
+    int? seekStepSeconds,
+    int? skipIntroSeconds,
+    int? skipOutroSeconds,
+    bool? autoCheckUpdate,
+    String? accentColorKey,
   }) => Preferences(
     appearance: appearance ?? this.appearance,
     speed: speed ?? this.speed,
@@ -72,6 +100,13 @@ final class Preferences {
     desktopVolume: desktopVolume ?? this.desktopVolume,
     prefetchNextEpisode: prefetchNextEpisode ?? this.prefetchNextEpisode,
     remoteKeyMap: remoteKeyMap ?? this.remoteKeyMap,
+    controlsAutoHideSeconds: controlsAutoHideSeconds ?? this.controlsAutoHideSeconds,
+    videoFitMode: videoFitMode ?? this.videoFitMode,
+    seekStepSeconds: seekStepSeconds ?? this.seekStepSeconds,
+    skipIntroSeconds: skipIntroSeconds ?? this.skipIntroSeconds,
+    skipOutroSeconds: skipOutroSeconds ?? this.skipOutroSeconds,
+    autoCheckUpdate: autoCheckUpdate ?? this.autoCheckUpdate,
+    accentColorKey: accentColorKey ?? this.accentColorKey,
   );
 
   Map<String, dynamic> toJson() => {
@@ -89,6 +124,13 @@ final class Preferences {
     'desktopVolume': desktopVolume,
     'prefetchNextEpisode': prefetchNextEpisode,
     if (remoteKeyMap != null) 'remoteKeyMap': remoteKeyMap!.toJson(),
+    'controlsAutoHideSeconds': controlsAutoHideSeconds,
+    'videoFitMode': videoFitMode,
+    'seekStepSeconds': seekStepSeconds,
+    'skipIntroSeconds': skipIntroSeconds,
+    'skipOutroSeconds': skipOutroSeconds,
+    'autoCheckUpdate': autoCheckUpdate,
+    'accentColorKey': accentColorKey,
   };
 
   factory Preferences.fromJson(Map<String, dynamic> json) => Preferences(
@@ -119,5 +161,20 @@ final class Preferences {
     remoteKeyMap: json['remoteKeyMap'] is Map
         ? RemoteKeyMap.fromJson(json['remoteKeyMap'] as Map<String, dynamic>)
         : null,
+    controlsAutoHideSeconds: json['controlsAutoHideSeconds'] is num
+        ? (json['controlsAutoHideSeconds'] as num).toInt()
+        : 5,
+    videoFitMode: json['videoFitMode'] as String? ?? 'contain',
+    seekStepSeconds: json['seekStepSeconds'] is num
+        ? (json['seekStepSeconds'] as num).toInt()
+        : 10,
+    skipIntroSeconds: json['skipIntroSeconds'] is num
+        ? (json['skipIntroSeconds'] as num).toInt()
+        : 0,
+    skipOutroSeconds: json['skipOutroSeconds'] is num
+        ? (json['skipOutroSeconds'] as num).toInt()
+        : 0,
+    autoCheckUpdate: json['autoCheckUpdate'] != false,
+    accentColorKey: json['accentColorKey'] as String? ?? 'default',
   );
 }

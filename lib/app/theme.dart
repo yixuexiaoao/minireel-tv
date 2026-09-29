@@ -5,13 +5,22 @@ abstract final class ReelTheme {
   static const darkAccent = Color(0xFFFF4D74);
   static const gold = Color(0xFFFFD66F);
 
-  static ThemeData make(Brightness brightness) {
+  static const Map<String, (Color, Color)> accentPresets = {
+    'default': (Color(0xFFFF3D6B), Color(0xFFFF4D74)), // 经典玫红
+    'orange': (Color(0xFFFF7A00), Color(0xFFFF8A1F)),  // 活力橙
+    'blue': (Color(0xFF2563EB), Color(0xFF3B82F6)),    // 极客蓝
+    'green': (Color(0xFF059669), Color(0xFF10B981)),   // 翡翠绿
+    'purple': (Color(0xFF7C3AED), Color(0xFF8B5CF6)),  // 优雅紫
+  };
+
+  static ThemeData make(Brightness brightness, [String accentKey = 'default']) {
     final dark = brightness == Brightness.dark;
     final background = dark ? const Color(0xFF0B0D12) : const Color(0xFFF5F6F8);
     final surface = dark ? const Color(0xFF12151C) : Colors.white;
     final text = dark ? const Color(0xFFF2F4F8) : const Color(0xFF101318);
     final sub = dark ? const Color(0xFF868FA0) : const Color(0xFF7B8494);
-    final color = dark ? darkAccent : accent;
+    final preset = accentPresets[accentKey] ?? accentPresets['default']!;
+    final color = dark ? preset.$2 : preset.$1;
     final base = ThemeData(
       useMaterial3: true,
       brightness: brightness,

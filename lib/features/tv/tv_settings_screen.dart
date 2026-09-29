@@ -89,6 +89,45 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
       AppAppearance.light: '浅色',
       AppAppearance.dark: '深色',
     };
+    const accentColors = {
+      'default': '经典玫红',
+      'orange': '活力橙',
+      'blue': '极客蓝',
+      'green': '翡翠绿',
+      'purple': '优雅紫',
+    };
+    const autoHideOptions = {
+      3: '3 秒',
+      5: '5 秒（推荐）',
+      8: '8 秒',
+      10: '10 秒',
+      0: '从不自动隐藏（常显）',
+    };
+    const fitModes = {
+      'contain': '原始比例（包含全图）',
+      'cover': '撑满裁切（无黑边沉浸）',
+      'fill': '拉伸全屏（画面铺满）',
+    };
+    const seekSteps = {
+      5: '5 秒',
+      10: '10 秒（推荐）',
+      15: '15 秒',
+      30: '30 秒',
+    };
+    const skipIntroOptions = {
+      0: '不跳过',
+      3: '跳过 3 秒',
+      5: '跳过 5 秒',
+      8: '跳过 8 秒',
+      10: '跳过 10 秒',
+    };
+    const skipOutroOptions = {
+      0: '不跳过',
+      3: '提前 3 秒切集',
+      5: '提前 5 秒切集',
+      8: '提前 8 秒切集',
+      10: '提前 10 秒切集',
+    };
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
@@ -108,7 +147,7 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                   children: [
-                  _group(context, '遥控器', [
+                  _group(context, '遥控器与操作', [
                     _navRow(
                       context,
                       Icons.settings_remote_rounded,
@@ -117,19 +156,45 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                       () => showRemoteKeySettings(context),
                       focusRole: 'settingsEntry',
                     ),
+                    _navRow(
+                      context,
+                      Icons.fast_forward_rounded,
+                      '遥控快进步长',
+                      seekSteps[prefs.seekStepSeconds] ?? '${prefs.seekStepSeconds} 秒',
+                      () => _pick(
+                        context,
+                        '遥控快进步长',
+                        seekSteps,
+                        prefs.seekStepSeconds,
+                        (v) => app.setPreferences(prefs.copyWith(seekStepSeconds: v)),
+                      ),
+                    ),
                   ]),
-                  _group(context, '主题', [
+                  _group(context, '外观与主题', [
                     _navRow(
                       context,
                       Icons.dark_mode_outlined,
-                      '外观',
+                      '外观模式',
                       appearances[prefs.appearance]!,
                       () => _pick(
                         context,
-                        '外观',
+                        '外观模式',
                         appearances,
                         prefs.appearance,
                         (v) => app.setPreferences(prefs.copyWith(appearance: v)),
+                      ),
+                    ),
+                    _navRow(
+                      context,
+                      Icons.palette_outlined,
+                      '主题配色',
+                      accentColors[prefs.accentColorKey] ?? '经典玫红',
+                      () => _pick(
+                        context,
+                        '主题配色',
+                        accentColors,
+                        prefs.accentColorKey,
+                        (v) => app.setPreferences(prefs.copyWith(accentColorKey: v)),
                       ),
                     ),
                     _switchRow(
@@ -143,7 +208,69 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                       ),
                     ),
                   ]),
-                  _group(context, '播放', [
+                  _group(context, '播放个性化', [
+                    _navRow(
+                      context,
+                      Icons.timer_outlined,
+                      '控制栏自动隐藏',
+                      autoHideOptions[prefs.controlsAutoHideSeconds] ?? '${prefs.controlsAutoHideSeconds} 秒',
+                      () => _pick(
+                        context,
+                        '控制栏自动隐藏时间',
+                        autoHideOptions,
+                        prefs.controlsAutoHideSeconds,
+                        (v) => app.setPreferences(prefs.copyWith(controlsAutoHideSeconds: v)),
+                      ),
+                    ),
+                    _navRow(
+                      context,
+                      Icons.aspect_ratio_rounded,
+                      '画面填充比例',
+                      fitModes[prefs.videoFitMode] ?? '原始比例',
+                      () => _pick(
+                        context,
+                        '画面填充比例',
+                        fitModes,
+                        prefs.videoFitMode,
+                        (v) => app.setPreferences(prefs.copyWith(videoFitMode: v)),
+                      ),
+                    ),
+                    _navRow(
+                      context,
+                      Icons.skip_next_rounded,
+                      '自动跳过片头',
+                      skipIntroOptions[prefs.skipIntroSeconds] ?? '${prefs.skipIntroSeconds} 秒',
+                      () => _pick(
+                        context,
+                        '自动跳过片头时长',
+                        skipIntroOptions,
+                        prefs.skipIntroSeconds,
+                        (v) => app.setPreferences(prefs.copyWith(skipIntroSeconds: v)),
+                      ),
+                    ),
+                    _navRow(
+                      context,
+                      Icons.fast_forward_rounded,
+                      '自动跳过片尾',
+                      skipOutroOptions[prefs.skipOutroSeconds] ?? '${prefs.skipOutroSeconds} 秒',
+                      () => _pick(
+                        context,
+                        '自动跳过片尾时长',
+                        skipOutroOptions,
+                        prefs.skipOutroSeconds,
+                        (v) => app.setPreferences(prefs.copyWith(skipOutroSeconds: v)),
+                      ),
+                    ),
+                    _switchRow(
+                      context,
+                      Icons.playlist_play_rounded,
+                      '自动播放下一集',
+                      '单集播完后自动加载并播放下一集',
+                      prefs.autoNext,
+                      (v) => app.setPreferences(
+                        prefs.copyWith(autoNext: v),
+                      ),
+                    ),
                     _switchRow(
                       context,
                       Icons.history_rounded,
@@ -187,7 +314,7 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                       ),
                     ),
                   ]),
-                  _group(context, '存储', [
+                  _group(context, '存储与系统', [
                     FutureBuilder<int>(
                       future: _cache,
                       builder: (context, snapshot) => _navRow(
@@ -202,11 +329,19 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                             : null,
                       ),
                     ),
-                  ]),
-                  _group(context, '关于与更新', [
-                    _navRow(
+                    _switchRow(
                       context,
                       Icons.system_update_rounded,
+                      '启动时自动检查更新',
+                      '应用启动后在后台静默检测最新版本',
+                      prefs.autoCheckUpdate,
+                      (v) => app.setPreferences(
+                        prefs.copyWith(autoCheckUpdate: v),
+                      ),
+                    ),
+                    _navRow(
+                      context,
+                      Icons.update_rounded,
                       '检查新版本',
                       _checkingUpdate ? '正在检查…' : '检查更新与升级',
                       _checkingUpdate ? null : _manualCheckUpdate,

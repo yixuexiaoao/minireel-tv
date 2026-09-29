@@ -58,6 +58,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
       AppAppearance.light: '浅色',
       AppAppearance.dark: '深色',
     };
+    const accentColors = {
+      'default': '经典玫红',
+      'orange': '活力橙',
+      'blue': '极客蓝',
+      'green': '翡翠绿',
+      'purple': '优雅紫',
+    };
+    const autoHideOptions = {
+      3: '3 秒',
+      5: '5 秒 (推荐)',
+      8: '8 秒',
+      10: '10 秒',
+      0: '从不自动隐藏',
+    };
+    const fitOptions = {
+      'contain': '原始比例 · 留黑边',
+      'cover': '撑满屏幕 · 自动裁剪',
+      'fill': '拉伸全屏 · 铺满屏幕',
+    };
+    const seekStepOptions = {
+      5: '5 秒',
+      10: '10 秒 (默认)',
+      15: '15 秒',
+      30: '30 秒',
+    };
+    const skipOptions = {
+      0: '关闭',
+      3: '跳过 3 秒',
+      5: '跳过 5 秒',
+      8: '跳过 8 秒',
+      10: '跳过 10 秒',
+    };
     const sensitivities = {
       GestureSensitivity.low: '低',
       GestureSensitivity.medium: '中',
@@ -96,6 +128,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
+                _row(
+                  Icons.palette_outlined,
+                  '主题配色',
+                  value: accentColors[prefs.accentColorKey] ?? '经典玫红',
+                  onTap: () async {
+                    final result = await pickOption(
+                      context,
+                      title: '主题配色',
+                      value: prefs.accentColorKey,
+                      options: accentColors,
+                    );
+                    if (result != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(accentColorKey: result),
+                      );
+                    }
+                  },
+                ),
                 _toggle(
                   Icons.text_fields_rounded,
                   '大字模式',
@@ -104,6 +154,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ]),
               _group('播放', [
+                _row(
+                  Icons.timer_outlined,
+                  '控制栏自动隐藏',
+                  value: autoHideOptions[prefs.controlsAutoHideSeconds] ?? '5 秒',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '控制栏自动隐藏时间',
+                      value: prefs.controlsAutoHideSeconds,
+                      options: autoHideOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(controlsAutoHideSeconds: value),
+                      );
+                    }
+                  },
+                ),
+                _row(
+                  Icons.aspect_ratio_rounded,
+                  '画面填充比例',
+                  value: fitOptions[prefs.videoFitMode] ?? '原始比例',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '画面填充比例',
+                      value: prefs.videoFitMode,
+                      options: fitOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(videoFitMode: value),
+                      );
+                    }
+                  },
+                ),
+                _row(
+                  Icons.fast_forward_rounded,
+                  '快进步长',
+                  value: seekStepOptions[prefs.seekStepSeconds] ?? '10 秒',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '快进步长',
+                      value: prefs.seekStepSeconds,
+                      options: seekStepOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(seekStepSeconds: value),
+                      );
+                    }
+                  },
+                ),
                 _row(
                   Icons.speed_rounded,
                   '默认倍速',
@@ -148,6 +252,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
+                _row(
+                  Icons.skip_next_rounded,
+                  '自动跳过片头',
+                  value: skipOptions[prefs.skipIntroSeconds] ?? '关闭',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '自动跳过片头',
+                      subtitle: '播放每集开始时自动向后跳过设定秒数',
+                      value: prefs.skipIntroSeconds,
+                      options: skipOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(skipIntroSeconds: value),
+                      );
+                    }
+                  },
+                ),
+                _row(
+                  Icons.fast_forward_outlined,
+                  '自动跳过片尾',
+                  value: skipOptions[prefs.skipOutroSeconds] ?? '关闭',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '自动跳过片尾',
+                      subtitle: '每集距离结束还剩设定秒数时自动切换至下一集',
+                      value: prefs.skipOutroSeconds,
+                      options: skipOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(skipOutroSeconds: value),
+                      );
+                    }
+                  },
+                ),
                 _toggle(
                   Icons.skip_next_outlined,
                   '自动播放下一集',
@@ -160,6 +302,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   prefs.rememberProgress,
                   (v) =>
                       app.setPreferences(prefs.copyWith(rememberProgress: v)),
+                ),
+                _toggle(
+                  Icons.download_for_offline_outlined,
+                  '优先缓存下一集',
+                  prefs.preloadNextEpisode,
+                  (v) =>
+                      app.setPreferences(prefs.copyWith(preloadNextEpisode: v)),
                 ),
               ]),
               if (isWindowsDesktop)
@@ -283,6 +432,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ]),
               _group('关于与更新', [
+                _toggle(
+                  Icons.autorenew_rounded,
+                  '启动时自动检查更新',
+                  prefs.autoCheckUpdate,
+                  (v) => app.setPreferences(prefs.copyWith(autoCheckUpdate: v)),
+                ),
                 _row(
                   Icons.system_update_rounded,
                   '检查新版本',

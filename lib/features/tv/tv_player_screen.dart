@@ -83,19 +83,20 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
   /// 与 [_onKey] 里的处理一致——控件隐藏时先唤出，可见时执行 seek/切集。
   void _onRemoteDirection(RemoteAction action) {
     if (_sheetOpen) return;
+    final step = Duration(seconds: _app.preferences.seekStepSeconds);
     switch (action) {
       case RemoteAction.left:
         if (!_controlsVisible) {
           _showControls();
           return;
         }
-        _seekBy(const Duration(seconds: -10));
+        _seekBy(-step);
       case RemoteAction.right:
         if (!_controlsVisible) {
           _showControls();
           return;
         }
-        _seekBy(const Duration(seconds: 10));
+        _seekBy(step);
       case RemoteAction.up:
         if (!_controlsVisible) {
           _showControls();
@@ -128,6 +129,10 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     if (mounted && !_closing) setState(() {});
   }
 
+  int? _currentEpisodeIndexForSkip;
+  bool _introSkipped = false;
+  bool _outroSkipped = false;
+
   void _sessionChanged() {
     if (!mounted || _closing) return;
     final awake = _foreground &&
@@ -137,17 +142,50 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
       _awake = awake;
       unawaited(_device.keepAwake(awake));
     }
-    // 关键修复：当播放状态从「非播放」变为「正在播放」时，主动（重新）启动
-    // 自动隐藏定时器。否则以下场景控件栏会卡住不隐藏：
-    //  - 初始化时 _showControls 在 playing=false 下调用，定时器到期不隐藏，
-    //    之后开始播放却没人再触发隐藏。
-    //  - 缓冲期间 playing 可能短暂为 false，定时器过期未隐藏，缓冲结束后
-    //    控件栏一直显示。
-    //  - 暂停→恢复，状态切换瞬间可能错过隐藏窗口。
     if (_session.playing && !_session.buffering && !_sheetOpen) {
       _ensureHideTimer();
     }
+    _checkAutoSkip();
     setState(() {});
+  }
+
+  void _checkAutoSkip() {
+    if (!_session.playing || _session.buffering || _session.duration <= Duration.zero) {
+      return;
+    }
+
+    final epIndex = _session.currentIndex;
+    if (_currentEpisodeIndexForSkip != epIndex) {
+      _currentEpisodeIndexForSkip = epIndex;
+      _introSkipped = false;
+      _outroSkipped = false;
+    }
+
+    // 自动跳过片头
+    final skipIntro = _app.preferences.skipIntroSeconds;
+    if (skipIntro > 0 && !_introSkipped) {
+      if (_session.position < const Duration(seconds: 1)) {
+        _introSkipped = true;
+        unawaited(_session.seek(Duration(seconds: skipIntro)));
+        _showEdgeToast('已跳过片头 $skipIntro 秒');
+        return;
+      }
+    }
+
+    // 自动跳过片尾
+    final skipOutro = _app.preferences.skipOutroSeconds;
+    if (skipOutro > 0 &&
+        !_outroSkipped &&
+        _app.preferences.autoNext &&
+        _session.canNext &&
+        _session.duration > const Duration(seconds: 15)) {
+      final remaining = _session.duration - _session.position;
+      if (remaining <= Duration(seconds: skipOutro)) {
+        _outroSkipped = true;
+        _showEdgeToast('已跳过片尾，自动播放下一集');
+        _changeEpisode(true);
+      }
+    }
   }
 
   @override
@@ -167,17 +205,17 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
   }
 
   void _showControls() {
-    _hideTimer?.cancel();
     _controlsVisible = true;
     if (mounted) setState(() {});
-    _ensureHideTimer();
+    _restartHideTimer();
   }
 
-  /// 启动/重置自动隐藏定时器。仅在「正在播放 + 非缓冲 + 无 sheet + 无 seek 预览」
-  /// 时才会在到期后隐藏；否则不启动（由状态变化后再调本方法补上）。
-  void _ensureHideTimer() {
+  /// 重置并启动自动隐藏定时器（由用户交互或状态恢复触发）。
+  void _restartHideTimer() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), () {
+    final timeout = _app.preferences.controlsAutoHideSeconds;
+    if (timeout <= 0) return; // 0 表示从不自动隐藏
+    _hideTimer = Timer(Duration(seconds: timeout), () {
       if (mounted &&
           !_closing &&
           _session.playing &&
@@ -187,6 +225,21 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
         setState(() => _controlsVisible = false);
       }
     });
+  }
+
+  /// 确保自动隐藏定时器正在运行。
+  /// 关键修复：若当前定时器已在倒计时中，绝不能在播放 tick 中 cancel 重置它，
+  /// 否则播放时高频事件会导致定时器永远无法触发。
+  void _ensureHideTimer() {
+    final timeout = _app.preferences.controlsAutoHideSeconds;
+    if (timeout <= 0) {
+      _hideTimer?.cancel();
+      return;
+    }
+    if (_hideTimer != null && _hideTimer!.isActive) {
+      return;
+    }
+    _restartHideTimer();
   }
 
   /// 显示边界提示（没有上/下集），2 秒后自动消失。
@@ -206,7 +259,7 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     _showControls();
   }
 
-  /// 遥控器左右键 seek：快进/快退 10s
+  /// 遥控器左右键 seek
   void _seekBy(Duration delta) {
     if (_session.duration == Duration.zero) return;
     final current = _seekPreview ?? _session.position;
@@ -222,9 +275,7 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
         unawaited(_session.seek(_seekPreview!));
         _seekPreview = null;
         setState(() {});
-        // seek 预览结束：之前 _showControls 启动的隐藏定时器可能因
-        // _seekPreview != null 而未隐藏，这里补上。
-        if (_controlsVisible) _ensureHideTimer();
+        if (_controlsVisible) _restartHideTimer();
       }
     });
   }
@@ -306,6 +357,15 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
               () {
                 Navigator.of(context).pop();
                 _openQuality();
+              },
+            ),
+            _menuAction(
+              context,
+              Icons.aspect_ratio_rounded,
+              _fitLabel(_app.preferences.videoFitMode),
+              () {
+                Navigator.of(context).pop();
+                _openFitMode();
               },
             ),
           ],
@@ -518,6 +578,89 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     }
   }
 
+  String _fitLabel(String mode) => switch (mode) {
+    'cover' => '撑满',
+    'fill' => '拉伸',
+    _ => '比例',
+  };
+
+  Future<void> _openFitMode() async {
+    _session.hold('sheet');
+    setState(() => _sheetOpen = true);
+    final modes = {
+      'contain': '原始比例（包含全图·两侧留黑）',
+      'cover': '撑满裁切（无黑边沉浸·放大填屏）',
+      'fill': '拉伸铺满（画面铺满·适应屏幕）',
+    };
+    try {
+      final result = await showReelSheet<String>(
+        context,
+        dark: true,
+        builder: (context) => SheetFrame(
+          title: '画面比例与填充',
+          subtitle: '当前：${modes[_app.preferences.videoFitMode] ?? "原始比例"}',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final entry in modes.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TVFocusable(
+                    radius: 12,
+                    autofocus: entry.key == _app.preferences.videoFitMode,
+                    onTap: () => Navigator.of(context).pop(entry.key),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: entry.key == _app.preferences.videoFitMode
+                            ? context.colors.primary.withValues(alpha: .18)
+                            : Colors.white.withValues(alpha: .06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: entry.key == _app.preferences.videoFitMode
+                              ? context.colors.primary
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            entry.value,
+                            style: TextStyle(
+                              color: entry.key == _app.preferences.videoFitMode
+                                  ? context.colors.primary
+                                  : Colors.white,
+                              fontSize: 14.5,
+                              fontWeight: entry.key == _app.preferences.videoFitMode
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          if (entry.key == _app.preferences.videoFitMode)
+                            Icon(Icons.check_rounded, color: context.colors.primary, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+      if (result != null) {
+        _app.setPreferences(_app.preferences.copyWith(videoFitMode: result));
+      }
+    } finally {
+      if (mounted && !_closing) {
+        setState(() => _sheetOpen = false);
+        _session.release('sheet');
+        _showControls();
+      }
+    }
+  }
+
   bool _cleanedUp = false;
 
   void _cleanup() {
@@ -564,10 +707,15 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     if (_sheetOpen) return KeyEventResult.ignored;
     final key = event.logicalKey;
     final keyMap = _app.remoteKeyMap;
-    // BACK / ESC → 退出
+    final step = Duration(seconds: _app.preferences.seekStepSeconds);
+
+    // BACK / ESC → 若控制栏可见则先收起控制栏，已收起则退出播放
     if (keyMap.matches(RemoteAction.back, key)) {
       if (_sheetOpen) {
         Navigator.of(context).maybePop();
+      } else if (_controlsVisible) {
+        setState(() => _controlsVisible = false);
+        _hideTimer?.cancel();
       } else {
         _exit();
       }
@@ -583,22 +731,22 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
       _togglePlay();
       return KeyEventResult.handled;
     }
-    // 左 → 快退 10s
+    // 左 → 快退
     if (keyMap.matches(RemoteAction.left, key)) {
       if (!_controlsVisible) {
         _showControls();
         return KeyEventResult.handled;
       }
-      _seekBy(const Duration(seconds: -10));
+      _seekBy(-step);
       return KeyEventResult.handled;
     }
-    // 右 → 快进 10s
+    // 右 → 快进
     if (keyMap.matches(RemoteAction.right, key)) {
       if (!_controlsVisible) {
         _showControls();
         return KeyEventResult.handled;
       }
-      _seekBy(const Duration(seconds: 10));
+      _seekBy(step);
       return KeyEventResult.handled;
     }
     // 上 → 上一集（到顶提示）
@@ -626,15 +774,21 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.mediaFastForward) {
-      _seekBy(const Duration(seconds: 10));
+      _seekBy(step);
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.mediaRewind) {
-      _seekBy(const Duration(seconds: -10));
+      _seekBy(-step);
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
   }
+
+  BoxFit _getVideoBoxFit(String mode) => switch (mode) {
+    'cover' => BoxFit.cover,
+    'fill' => BoxFit.fill,
+    _ => BoxFit.contain,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -644,7 +798,10 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
         : (displayed.inMilliseconds / _session.duration.inMilliseconds)
             .clamp(0.0, 1.0);
     return Theme(
-      data: ReelTheme.make(Brightness.dark),
+      data: ReelTheme.make(
+        Brightness.dark,
+        _app.preferences.accentColorKey,
+      ),
       child: PopScope(
         canPop: !_sheetOpen,
         onPopInvokedWithResult: (didPop, _) {
@@ -673,13 +830,27 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
                       // State，新 State 绑定新 controller。
                       key: ObjectKey(controller),
                       controller: controller,
-                      fit: BoxFit.contain,
+                      fit: _getVideoBoxFit(_app.preferences.videoFitMode),
                       controls: NoVideoControls,
                       pauseUponEnteringBackgroundMode: false,
                       resumeUponEnteringForegroundMode: false,
                       wakelock: false,
                     );
                   },
+                ),
+                // 画面任意区域点击：唤出或收起控制栏
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      if (_controlsVisible) {
+                        setState(() => _controlsVisible = false);
+                        _hideTimer?.cancel();
+                      } else {
+                        _showControls();
+                      }
+                    },
+                  ),
                 ),
                 // 加载/缓冲指示
                 if (_session.loadingDetail || _session.buffering)

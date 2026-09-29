@@ -67,8 +67,14 @@ class _MiniReelAppState extends State<MiniReelApp> {
       builder: (context, _) => MaterialApp(
         title: 'MiniReel',
         debugShowCheckedModeBanner: false,
-        theme: ReelTheme.make(Brightness.light),
-        darkTheme: ReelTheme.make(Brightness.dark),
+        theme: ReelTheme.make(
+          Brightness.light,
+          widget.controller.preferences.accentColorKey,
+        ),
+        darkTheme: ReelTheme.make(
+          Brightness.dark,
+          widget.controller.preferences.accentColorKey,
+        ),
         themeMode: switch (widget.controller.preferences.appearance) {
           AppAppearance.system => ThemeMode.system,
           AppAppearance.light => ThemeMode.light,
