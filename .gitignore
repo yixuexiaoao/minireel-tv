@@ -26,6 +26,7 @@ app.*.map.json
 /android/.signing/
 key.properties
 *.jks
+!android/app/minireel-release.jks
 *.keystore
 *.p12
 *.pfx
