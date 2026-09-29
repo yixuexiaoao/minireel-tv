@@ -1,0 +1,137 @@
+name: Build Android TV (armeabi-v7a)
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Publish as GitHub Release (Direct APK download)'
+        required: true
+        type: boolean
+        default: true
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - 'License'
+      - '.gitignore'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Android TV v7a
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    env:
+      FLUTTER_VERSION: '3.41.9'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Keystore
+        run: |
+          KEYSTORE_PATH="$RUNNER_TEMP/minireel-release.jks"
+          KEYSTORE_PASS="minireel123"
+          KEY_ALIAS="minireel"
+
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "Using existing ANDROID_KEYSTORE_BASE64 from GitHub Secrets..."
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_PATH"
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "ANDROID_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "ANDROID_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+          else
+            echo "No keystore secrets configured. Generating self-signed release keystore..."
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_PATH" \
+              -alias "$KEY_ALIAS" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "$KEYSTORE_PASS" \
+              -keypass "$KEYSTORE_PASS" \
+              -dname "CN=MiniReel, OU=MiniReel, O=MiniReel, L=Beijing, ST=Beijing, C=CN"
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASS" >> $GITHUB_ENV
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
+            echo "ANDROID_KEY_PASSWORD=$KEYSTORE_PASS" >> $GITHUB_ENV
+          fi
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android build tools and NDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Flutter dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build Android TV APK (split-per-abi)
+        run: |
+          flutter build apk --release --flavor tv --split-per-abi
+
+      - name: Organize output APKs
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          mkdir -p output
+          
+          # armeabi-v7a (32位 Android TV / 电视机顶盒通用架构)
+          if [ -f build/app/outputs/flutter-apk/app-armeabi-v7a-tv-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-armeabi-v7a-tv-release.apk output/MiniReel-${VERSION}-tv-armeabi-v7a.apk
+          fi
+          
+          # arm64-v8a (64位 Android TV 架构备用)
+          if [ -f build/app/outputs/flutter-apk/app-arm64-v8a-tv-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-arm64-v8a-tv-release.apk output/MiniReel-${VERSION}-tv-arm64-v8a.apk
+          fi
+          
+          ls -lh output/
+
+      - name: Clean temporary keystore
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/minireel-release.jks"
+
+      - name: Upload APKs as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiniReel-Android-TV-APKs
+          path: output/*.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.create_release) || github.ref == 'refs/heads/main' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          TAG_NAME="v${VERSION}-tv-build-${{ github.run_number }}"
+          
+          gh release create "$TAG_NAME" output/*.apk \
+            --title "MiniReel v${VERSION} Android TV (含 v7a)" \
+            --notes "MiniReel Android TV 版在线编译产物。
+
+- **MiniReel-${VERSION}-tv-armeabi-v7a.apk**：适用于 32 位 Android TV / 电视机顶盒（armeabi-v7a 架构，最兼容）。
+- **MiniReel-${VERSION}-tv-arm64-v8a.apk**：适用于 64 位 Android TV / 高性能新电视及盒子。"
