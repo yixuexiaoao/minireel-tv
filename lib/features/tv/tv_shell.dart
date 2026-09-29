@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/theme.dart';
+import '../../core/services/app_update_service.dart';
 import '../../domain/models/drama.dart';
 import '../shared/widgets.dart';
 import 'tv_focus.dart';
@@ -12,6 +14,7 @@ import 'tv_mine_screen.dart';
 import 'tv_rankings_screen.dart';
 import 'tv_player_screen.dart';
 import 'tv_settings_screen.dart';
+import 'tv_update_dialog.dart';
 
 /// TV 版主界面。
 ///
@@ -57,6 +60,8 @@ class _TVAppShellState extends State<TVAppShell> {
     }
   }
 
+  static bool _hasCheckedAutoUpdate = false;
+
   @override
   void initState() {
     super.initState();
@@ -69,7 +74,24 @@ class _TVAppShellState extends State<TVAppShell> {
       // 默认焦点：进入后红点在顶部搜索框
       _searchFocus.requestFocus();
       unawaited(AppScope.read(context).repository.refresh());
+      if (!_hasCheckedAutoUpdate) {
+        _hasCheckedAutoUpdate = true;
+        _checkAutoUpdate();
+      }
     });
+  }
+
+  Future<void> _checkAutoUpdate() async {
+    // 启动延迟 2.5 秒，先确保首屏界面和短剧库就绪
+    await Future.delayed(const Duration(milliseconds: 2500));
+    if (!mounted || _openingPlayer) return;
+    try {
+      final info = await AppUpdateService.checkForUpdate();
+      if (!mounted || _openingPlayer || info == null || !info.hasUpdate) return;
+      await showTVUpdateDialog(context, info);
+    } catch (_) {
+      // 启动静默失败，不打扰用户
+    }
   }
 
   @override

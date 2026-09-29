@@ -3,11 +3,13 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/theme.dart';
+import '../../core/services/app_update_service.dart';
 import '../../domain/models/preferences.dart';
 import '../../domain/models/remote_key_map.dart';
 import '../shared/widgets.dart';
 import 'tv_focus.dart';
 import 'tv_remote_key_settings.dart';
+import 'tv_update_dialog.dart';
 
 /// TV 版设置页。
 /// 复用 SettingsScreen 的核心设置项，省略 TV 不适用的项（手势灵敏度）。
@@ -20,9 +22,57 @@ class TVSettingsScreen extends StatefulWidget {
 
 class _TVSettingsScreenState extends State<TVSettingsScreen> {
   Future<int>? _cache;
+  bool _checkingUpdate = false;
   late final Future<PackageInfo?> _packageInfo = PackageInfo.fromPlatform()
       .then<PackageInfo?>((value) => value)
       .catchError((Object _) => null);
+
+  Future<void> _manualCheckUpdate() async {
+    setState(() => _checkingUpdate = true);
+    try {
+      final info = await AppUpdateService.checkForUpdate();
+      if (!mounted) return;
+      if (info != null && info.hasUpdate) {
+        await showTVUpdateDialog(context, info);
+      } else if (info != null) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('当前已是最新版本 (v${info.currentVersion})'),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            width: 320,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('检查更新失败，请检查网络连接'),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            width: 280,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('检查更新出错: $e'),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          width: 300,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -153,7 +203,14 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                       ),
                     ),
                   ]),
-                  _group(context, '关于', [
+                  _group(context, '关于与更新', [
+                    _navRow(
+                      context,
+                      Icons.system_update_rounded,
+                      '检查新版本',
+                      _checkingUpdate ? '正在检查…' : '检查更新与升级',
+                      _checkingUpdate ? null : _manualCheckUpdate,
+                    ),
                     FutureBuilder<PackageInfo?>(
                       future: _packageInfo,
                       builder: (context, snapshot) {
@@ -161,9 +218,9 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                         return _infoRow(
                           context,
                           Icons.info_outline_rounded,
-                          '版本',
+                          '当前版本',
                           info != null
-                              ? '${info.version} (${info.buildNumber})'
+                              ? 'v${info.version} (${info.buildNumber})'
                               : '—',
                         );
                       },

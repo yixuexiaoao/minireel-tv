@@ -4,9 +4,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../app/app_controller.dart';
 import '../../app/theme.dart';
 import '../../app/platform.dart';
+import '../../core/services/app_update_service.dart';
 import '../../domain/models/preferences.dart';
 import '../shared/widgets.dart';
 import '../player/desktop_player_input.dart';
+import '../tv/tv_update_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,9 +18,30 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   Future<int>? _cache;
+  bool _checkingUpdate = false;
   late final Future<PackageInfo?> _packageInfo = PackageInfo.fromPlatform()
       .then<PackageInfo?>((value) => value)
       .catchError((Object _) => null);
+
+  Future<void> _manualCheckUpdate() async {
+    setState(() => _checkingUpdate = true);
+    try {
+      final info = await AppUpdateService.checkForUpdate();
+      if (!mounted) return;
+      if (info != null && info.hasUpdate) {
+        await showTVUpdateDialog(context, info);
+      } else if (info != null) {
+        showToast(context, '当前已是最新版本 (v${info.currentVersion})');
+      } else {
+        showToast(context, '检查更新失败，请检查网络连接');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showToast(context, '检查更新出错: $e');
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -259,15 +282,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ]),
-              _group('关于', [
+              _group('关于与更新', [
+                _row(
+                  Icons.system_update_rounded,
+                  '检查新版本',
+                  value: _checkingUpdate ? '正在检查…' : '点击检查',
+                  onTap: _checkingUpdate ? null : _manualCheckUpdate,
+                ),
                 FutureBuilder<PackageInfo?>(
                   future: _packageInfo,
                   builder: (context, snapshot) => _row(
                     Icons.info_outline_rounded,
-                    '版本',
+                    '当前版本',
                     value: snapshot.data == null
                         ? '—'
-                        : '${snapshot.data!.version} (${snapshot.data!.buildNumber})',
+                        : 'v${snapshot.data!.version} (${snapshot.data!.buildNumber})',
                   ),
                 ),
                 _row(
