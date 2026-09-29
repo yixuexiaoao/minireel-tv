@@ -79,20 +79,19 @@ class CoverImage extends StatelessWidget {
         ),
       ),
     );
-    if (drama.coverUrl.isEmpty) return placeholder();
-    // TV/低端设备性能优化：按显示尺寸解码，避免把原图(可达 800×1200)整张
-    // 解码进内存。卡片显示宽约 175 逻辑像素，按 2x DPR 给 350 像素足够清晰，
-    // 内存占用降一个数量级，解码也更快。
-    //
-    // macOS 例外：封面源是 HEIC 格式，Flutter 对 HEIC 做 cacheWidth resize
-    // 时可能解码失败（ImageDescriptor resize 走的是 Skia，HEIC resize 在
-    // 某些组合下不工作）。macOS 上不传 cacheWidth，让系统 Core Graphics 原生
-    // 解码完整 HEIC，再由 Flutter 按显示尺寸缩放。
+    if (drama.coverUrl.isEmpty || drama.coverUrl.contains('.heic')) {
+      return placeholder();
+    }
+    // TV/低端设备性能优化：按显示尺寸解码，避免把原图整张解码进内存。
     final useCacheWidth = defaultTargetPlatform != TargetPlatform.macOS;
     return Image.network(
       drama.coverUrl,
       fit: fit,
       cacheWidth: useCacheWidth ? 350 : null,
+      headers: const {
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 9; TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36',
+      },
       excludeFromSemantics: true,
       gaplessPlayback: true,
       errorBuilder: (_, _, _) => placeholder(),

@@ -130,57 +130,89 @@ class _TVAppShellState extends State<TVAppShell> {
     _contentScope.requestFocus();
   }
 
+  DateTime? _lastBackPressTime;
+
+  void _handleBack() {
+    if (_tab != 0) {
+      _selectTab(0);
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('再按一次返回键退出程序'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          width: 260,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+    SystemNavigator.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return TVDpadInterceptor(
-      child: Scaffold(
-      body: Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: Row(
-          children: [
-            // 导航栏独立焦点区：D-pad 在导航项间上下移动，右键进入内容区
-            // 右键统一落到顶部搜索框（由 TVFocusTraversalPolicy 特判处理）
-            FocusTraversalGroup(
-              key: navRegionKey,
-              policy: TVFocusTraversalPolicy(),
-              child: _TVNavigation(
-                selected: _tab,
-                onSelect: _selectTab,
-              ),
-            ),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: Theme.of(context).dividerColor),
-                  ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: TVDpadInterceptor(
+        child: Scaffold(
+        body: Container(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: Row(
+            children: [
+              // 导航栏独立焦点区：D-pad 在导航项间上下移动，右键进入内容区
+              // 右键统一落到顶部搜索框（由 TVFocusTraversalPolicy 特判处理）
+              FocusTraversalGroup(
+                key: navRegionKey,
+                policy: TVFocusTraversalPolicy(),
+                child: _TVNavigation(
+                  selected: _tab,
+                  onSelect: _selectTab,
                 ),
-                // 内容区独立焦点区（二维，允许上下左右）
-                child: Focus(
-                  focusNode: _contentScope,
-                  canRequestFocus: false,
-                  descendantsAreFocusable: true,
-                  child: FocusTraversalGroup(
-                    policy: TVFocusTraversalPolicy(),
-                    child: IndexedStack(
-                      index: _tab,
-                      children: [
-                        TVLibraryScreen(onPlay: _play, searchFocus: _searchFocus),
-                        TVRankingsScreen(onPlay: _play),
-                        TVMineScreen(
-                          onPlay: _play,
-                          onExplore: () => _selectTab(0),
-                        ),
-                        TVSettingsScreen(),
-                      ],
+              ),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(color: Theme.of(context).dividerColor),
+                    ),
+                  ),
+                  // 内容区独立焦点区（二维，允许上下左右）
+                  child: Focus(
+                    focusNode: _contentScope,
+                    canRequestFocus: false,
+                    descendantsAreFocusable: true,
+                    child: FocusTraversalGroup(
+                      policy: TVFocusTraversalPolicy(),
+                      child: IndexedStack(
+                        index: _tab,
+                        children: [
+                          TVLibraryScreen(onPlay: _play, searchFocus: _searchFocus),
+                          TVRankingsScreen(onPlay: _play),
+                          TVMineScreen(
+                            onPlay: _play,
+                            onExplore: () => _selectTab(0),
+                          ),
+                          TVSettingsScreen(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+        ),
       ),
     );
   }

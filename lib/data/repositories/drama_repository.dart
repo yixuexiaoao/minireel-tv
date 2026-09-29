@@ -188,7 +188,11 @@ final class DramaRepository extends ChangeNotifier {
 
   Future<void> loadCache() async {
     for (final drama in await store.readCatalog()) {
-      _catalog[drama.id] = drama;
+      if (drama.coverUrl.contains('.heic')) {
+        _catalog[drama.id] = drama.copyWith(coverUrl: '');
+      } else {
+        _catalog[drama.id] = drama;
+      }
     }
     lastRefresh = await store.readLastRefresh();
     final stateStore = store;

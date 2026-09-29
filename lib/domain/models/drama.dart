@@ -51,15 +51,55 @@ final class Drama {
   final double? heat;
   final DateTime? onlineDate;
 
+  Drama copyWith({
+    String? id,
+    String? source,
+    String? sourceId,
+    String? title,
+    String? coverUrl,
+    String? intro,
+    String? category,
+    int? episodeCount,
+    String? remark,
+    List<String>? tags,
+    DramaChannel? channel,
+    ReleaseStatus? releaseStatus,
+    double? score,
+    int? views,
+    double? heat,
+    DateTime? onlineDate,
+  }) => Drama(
+    id: id ?? this.id,
+    source: source ?? this.source,
+    sourceId: sourceId ?? this.sourceId,
+    title: title ?? this.title,
+    coverUrl: coverUrl ?? this.coverUrl,
+    intro: intro ?? this.intro,
+    category: category ?? this.category,
+    episodeCount: episodeCount ?? this.episodeCount,
+    remark: remark ?? this.remark,
+    tags: tags ?? this.tags,
+    channel: channel ?? this.channel,
+    releaseStatus: releaseStatus ?? this.releaseStatus,
+    score: score ?? this.score,
+    views: views ?? this.views,
+    heat: heat ?? this.heat,
+    onlineDate: onlineDate ?? this.onlineDate,
+  );
+
   /// Sparse search/rank records must not erase richer cached metadata.
   Drama mergeMissing(Drama? previous, {bool preserveChannel = false}) {
     if (previous == null || previous.id != id) return this;
+    final validPrevCover = (previous.coverUrl.contains('.heic')) ? '' : previous.coverUrl;
+    final finalCover = coverUrl.isNotEmpty && !coverUrl.contains('.heic')
+        ? coverUrl
+        : validPrevCover;
     return Drama(
       id: id,
       source: source,
       sourceId: sourceId,
       title: title.isEmpty || title == sourceId ? previous.title : title,
-      coverUrl: coverUrl.isEmpty ? previous.coverUrl : coverUrl,
+      coverUrl: finalCover,
       intro: intro.isEmpty ? previous.intro : intro,
       category: category.isEmpty || category == channel.label
           ? previous.category

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show WidgetsBinding;
@@ -26,7 +27,9 @@ final class _MediaKitPlayer implements PlaybackEngine {
     : player = Player(
         configuration: PlayerConfiguration(
           title: 'MiniReel',
-          bufferSize: _preloading ? 8 * 1024 * 1024 : 32 * 1024 * 1024,
+          bufferSize: _preloading
+              ? 4 * 1024 * 1024
+              : (Platform.isAndroid ? 16 * 1024 * 1024 : 32 * 1024 * 1024),
           muted: _preloading,
         ),
       ) {
@@ -164,10 +167,14 @@ final class _MediaKitPlayer implements PlaybackEngine {
     if (playing && _preloading) {
       final native = player.platform;
       if (native is NativePlayer) {
-        await native.setProperty('demuxer-max-bytes', '${32 * 1024 * 1024}');
+        final maxBytes =
+            Platform.isAndroid ? 16 * 1024 * 1024 : 32 * 1024 * 1024;
+        final backBytes =
+            Platform.isAndroid ? 4 * 1024 * 1024 : 8 * 1024 * 1024;
+        await native.setProperty('demuxer-max-bytes', '$maxBytes');
         await native.setProperty(
           'demuxer-max-back-bytes',
-          '${8 * 1024 * 1024}',
+          '$backBytes',
         );
         await native.setProperty('cache-secs', '20');
         await native.setProperty('demuxer-readahead-secs', '20');

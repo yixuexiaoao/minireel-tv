@@ -159,6 +159,9 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     } else {
       _session.boost(false);
       _session.hold('background');
+      try {
+        _engine.player.pause();
+      } catch (_) {}
     }
     _sessionChanged();
   }
@@ -515,15 +518,28 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     }
   }
 
-  void _exit() {
+  bool _cleanedUp = false;
+
+  void _cleanup() {
+    if (_cleanedUp) return;
+    _cleanedUp = true;
     _closing = true;
+    try {
+      _engine.player.pause();
+      _engine.player.stop();
+    } catch (_) {}
     unawaited(_session.close());
-    Navigator.of(context).pop();
+  }
+
+  void _exit() {
+    if (_closing) return;
+    _cleanup();
+    if (mounted) Navigator.of(context).maybePop();
   }
 
   @override
   void dispose() {
-    _closing = true;
+    _cleanup();
     if (tvPlayerDebugActions != null) {
       tvPlayerDebugActions = null;
     }
@@ -550,7 +566,11 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     final keyMap = _app.remoteKeyMap;
     // BACK / ESC → 退出
     if (keyMap.matches(RemoteAction.back, key)) {
-      _exit();
+      if (_sheetOpen) {
+        Navigator.of(context).maybePop();
+      } else {
+        _exit();
+      }
       return KeyEventResult.handled;
     }
     // MENU（三条横岗等）→ 打开菜单
@@ -626,9 +646,9 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     return Theme(
       data: ReelTheme.make(Brightness.dark),
       child: PopScope(
-        canPop: false,
+        canPop: !_sheetOpen,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _exit();
+          if (didPop) _cleanup();
         },
         child: Scaffold(
           backgroundColor: Colors.black,

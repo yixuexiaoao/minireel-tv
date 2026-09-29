@@ -9,6 +9,7 @@
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
         android:enableOnBackInvokedCallback="true"
+        android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner">
         <!-- 禁用 Impeller，回退 Skia：避免部分 TV 盒子/模拟器 Vulkan 视频纹理黑屏（与 debug 一致） -->
