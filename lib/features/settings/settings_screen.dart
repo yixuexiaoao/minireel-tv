@@ -95,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       GestureSensitivity.medium: '中',
       GestureSensitivity.high: '高',
     };
-    const longPressSpeedOptions = {
+    final longPressSpeedOptions = {
       1.5: '1.5x 倍速',
       2.0: '2.0x 倍速 (默认)',
       3.0: '3.0x 极速',

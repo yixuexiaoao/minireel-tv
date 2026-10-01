@@ -134,7 +134,7 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
       5: '标准平衡（5 列）',
       6: '紧凑高效（6 列）',
     };
-    const longPressSpeedOptions = {
+    final longPressSpeedOptions = {
       1.5: '1.5x 倍速',
       2.0: '2.0x 倍速（默认）',
       3.0: '3.0x 极速',
