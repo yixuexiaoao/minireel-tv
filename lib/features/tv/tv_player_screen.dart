@@ -58,7 +58,7 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _app = AppScope.read(context);
-    _engine = MediaKitEngine();
+    _engine = MediaKitEngine(preferences: _app.preferences);
     _device = DeviceControls(_engine);
     _session = PlaybackSession(
       app: _app,
@@ -368,6 +368,15 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
                 _openFitMode();
               },
             ),
+            _menuAction(
+              context,
+              Icons.volume_up_rounded,
+              _audioBoostLabel(_app.preferences.audioBoost),
+              () {
+                Navigator.of(context).pop();
+                _openAudioBoost();
+              },
+            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -651,6 +660,94 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
       );
       if (result != null) {
         _app.setPreferences(_app.preferences.copyWith(videoFitMode: result));
+      }
+    } finally {
+      if (mounted && !_closing) {
+        setState(() => _sheetOpen = false);
+        _session.release('sheet');
+        _showControls();
+      }
+    }
+  }
+
+  String _audioBoostLabel(int boost) => switch (boost) {
+    25 => '人声+25%',
+    50 => '增强+50%',
+    100 => '倍增+100%',
+    _ => '原声音量',
+  };
+
+  Future<void> _openAudioBoost() async {
+    _session.hold('sheet');
+    setState(() => _sheetOpen = true);
+    final boosts = {
+      0: '原始音量（100% 标准输出）',
+      25: '清晰人声（+25% 对白清晰）',
+      50: '沉浸增强（+50% 推荐·声音更洪亮）',
+      100: '极限双倍（+100% 极小音量片源放大）',
+    };
+    try {
+      final result = await showReelSheet<int>(
+        context,
+        dark: true,
+        builder: (context) => SheetFrame(
+          title: '声音与人声增强',
+          subtitle: '当前：${boosts[_app.preferences.audioBoost] ?? "原始音量"}',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final entry in boosts.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TVFocusable(
+                    radius: 12,
+                    autofocus: entry.key == _app.preferences.audioBoost,
+                    onTap: () => Navigator.of(context).pop(entry.key),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: entry.key == _app.preferences.audioBoost
+                            ? context.colors.primary.withValues(alpha: .18)
+                            : Colors.white.withValues(alpha: .06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: entry.key == _app.preferences.audioBoost
+                              ? context.colors.primary
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            entry.value,
+                            style: TextStyle(
+                              color: entry.key == _app.preferences.audioBoost
+                                  ? context.colors.primary
+                                  : Colors.white,
+                              fontSize: 14.5,
+                              fontWeight: entry.key == _app.preferences.audioBoost
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          if (entry.key == _app.preferences.audioBoost)
+                            Icon(Icons.check_rounded, color: context.colors.primary, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+      if (result != null) {
+        final newPrefs = _app.preferences.copyWith(audioBoost: result);
+        _app.setPreferences(newPrefs);
+        _engine.updatePreferences(newPrefs);
+        unawaited(_engine.setVolume(_device.volume));
       }
     } finally {
       if (mounted && !_closing) {
@@ -1148,9 +1245,9 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
                 ),
                 const SizedBox(width: 20),
                 _ctrlButton(
-                  Icons.replay_10_rounded,
-                  '快退 10s',
-                  () => _seekBy(const Duration(seconds: -10)),
+                  Icons.replay_rounded,
+                  '快退 ${_app.preferences.seekStepSeconds}s',
+                  () => _seekBy(Duration(seconds: -_app.preferences.seekStepSeconds)),
                 ),
                 const SizedBox(width: 20),
                 _ctrlButton(
@@ -1163,9 +1260,9 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
                 ),
                 const SizedBox(width: 20),
                 _ctrlButton(
-                  Icons.forward_10_rounded,
-                  '快进 10s',
-                  () => _seekBy(const Duration(seconds: 10)),
+                  Icons.forward_rounded,
+                  '快进 ${_app.preferences.seekStepSeconds}s',
+                  () => _seekBy(Duration(seconds: _app.preferences.seekStepSeconds)),
                 ),
                 const SizedBox(width: 20),
                 _ctrlButton(
@@ -1220,20 +1317,30 @@ class _TVPlayerScreenState extends State<TVPlayerScreen>
     ),
   );
 
-  Widget _glass({double radius = 28, required Widget child}) => ClipRRect(
-    borderRadius: BorderRadius.circular(radius),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xCF12141A),
-          borderRadius: BorderRadius.circular(radius),
-          border: Border.all(color: Colors.white12),
-        ),
-        child: child,
+  Widget _glass({double radius = 28, required Widget child}) {
+    final useGlass = _app.preferences.playerGlassEffect;
+    final container = Container(
+      decoration: BoxDecoration(
+        color: useGlass ? const Color(0xCF12141A) : const Color(0xEE12141A),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: Colors.white12),
       ),
-    ),
-  );
+      child: child,
+    );
+    if (!useGlass) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: container,
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: container,
+      ),
+    );
+  }
 }
 
 /// TV 版选集网格：每集用 TVFocusable 包裹。

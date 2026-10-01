@@ -71,7 +71,7 @@ class _MacPlayerScreenState extends State<MacPlayerScreen>
   void initState() {
     super.initState();
     _app = AppScope.read(context);
-    _engine = widget.engine ?? MediaKitEngine();
+    _engine = widget.engine ?? MediaKitEngine(preferences: _app.preferences);
     _device = DeviceControls(_engine);
     _volume = _app.preferences.desktopVolume;
     if (_volume > 0) _unmutedVolume = _volume;

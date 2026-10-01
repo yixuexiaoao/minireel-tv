@@ -31,6 +31,13 @@ final class Preferences {
     this.skipOutroSeconds = 0,
     this.autoCheckUpdate = true,
     this.accentColorKey = 'default',
+    this.hardwareDecoding = 'auto',
+    this.playerBufferSizeMb = 16,
+    this.audioBoost = 0,
+    this.playerGlassEffect = true,
+    this.tvColumns = 0,
+    this.tvFocusSound = true,
+    this.longPressSpeed = 2.0,
   });
 
   final AppAppearance appearance;
@@ -62,6 +69,20 @@ final class Preferences {
   final bool autoCheckUpdate;
   /// 界面强调色主题：'default'(经典玫红), 'orange'(活力橙), 'blue'(极客蓝), 'green'(翡翠绿), 'purple'(优雅紫)
   final String accentColorKey;
+  /// 硬件解码：'auto' (自动硬解·推荐), 'mediacodec' (强制硬解), 'no' (兼容软解)
+  final String hardwareDecoding;
+  /// 播放缓冲区大小（MB）：8, 16, 32, 64
+  final int playerBufferSizeMb;
+  /// 音量与人声增强（百分比）：0 (原始), 25 (+25%), 50 (+50%), 100 (+100%)
+  final int audioBoost;
+  /// 播放界面毛玻璃高斯模糊（关闭可大幅提升低端设备帧率）
+  final bool playerGlassEffect;
+  /// TV 剧库网格列数：0 (自适应), 4 (大图沉浸), 5 (标准), 6 (紧凑)
+  final int tvColumns;
+  /// 遥控器焦点按键音效反馈
+  final bool tvFocusSound;
+  /// 长按快进倍速：1.5, 2.0, 3.0
+  final double longPressSpeed;
 
   Preferences copyWith({
     AppAppearance? appearance,
@@ -85,6 +106,13 @@ final class Preferences {
     int? skipOutroSeconds,
     bool? autoCheckUpdate,
     String? accentColorKey,
+    String? hardwareDecoding,
+    int? playerBufferSizeMb,
+    int? audioBoost,
+    bool? playerGlassEffect,
+    int? tvColumns,
+    bool? tvFocusSound,
+    double? longPressSpeed,
   }) => Preferences(
     appearance: appearance ?? this.appearance,
     speed: speed ?? this.speed,
@@ -107,6 +135,13 @@ final class Preferences {
     skipOutroSeconds: skipOutroSeconds ?? this.skipOutroSeconds,
     autoCheckUpdate: autoCheckUpdate ?? this.autoCheckUpdate,
     accentColorKey: accentColorKey ?? this.accentColorKey,
+    hardwareDecoding: hardwareDecoding ?? this.hardwareDecoding,
+    playerBufferSizeMb: playerBufferSizeMb ?? this.playerBufferSizeMb,
+    audioBoost: audioBoost ?? this.audioBoost,
+    playerGlassEffect: playerGlassEffect ?? this.playerGlassEffect,
+    tvColumns: tvColumns ?? this.tvColumns,
+    tvFocusSound: tvFocusSound ?? this.tvFocusSound,
+    longPressSpeed: longPressSpeed ?? this.longPressSpeed,
   );
 
   Map<String, dynamic> toJson() => {
@@ -131,6 +166,13 @@ final class Preferences {
     'skipOutroSeconds': skipOutroSeconds,
     'autoCheckUpdate': autoCheckUpdate,
     'accentColorKey': accentColorKey,
+    'hardwareDecoding': hardwareDecoding,
+    'playerBufferSizeMb': playerBufferSizeMb,
+    'audioBoost': audioBoost,
+    'playerGlassEffect': playerGlassEffect,
+    'tvColumns': tvColumns,
+    'tvFocusSound': tvFocusSound,
+    'longPressSpeed': longPressSpeed,
   };
 
   factory Preferences.fromJson(Map<String, dynamic> json) => Preferences(
@@ -176,5 +218,20 @@ final class Preferences {
         : 0,
     autoCheckUpdate: json['autoCheckUpdate'] != false,
     accentColorKey: json['accentColorKey'] as String? ?? 'default',
+    hardwareDecoding: json['hardwareDecoding'] as String? ?? 'auto',
+    playerBufferSizeMb: json['playerBufferSizeMb'] is num
+        ? (json['playerBufferSizeMb'] as num).toInt()
+        : 16,
+    audioBoost: json['audioBoost'] is num
+        ? (json['audioBoost'] as num).toInt()
+        : 0,
+    playerGlassEffect: json['playerGlassEffect'] != false,
+    tvColumns: json['tvColumns'] is num
+        ? (json['tvColumns'] as num).toInt()
+        : 0,
+    tvFocusSound: json['tvFocusSound'] != false,
+    longPressSpeed: json['longPressSpeed'] is num
+        ? (json['longPressSpeed'] as num).toDouble()
+        : 2.0,
   );
 }

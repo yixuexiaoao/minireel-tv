@@ -128,6 +128,34 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
       8: '提前 8 秒切集',
       10: '提前 10 秒切集',
     };
+    const tvColumnOptions = {
+      0: '自适应（推荐）',
+      4: '大图沉浸（4 列）',
+      5: '标准平衡（5 列）',
+      6: '紧凑高效（6 列）',
+    };
+    const longPressSpeedOptions = {
+      1.5: '1.5x 倍速',
+      2.0: '2.0x 倍速（默认）',
+      3.0: '3.0x 极速',
+    };
+    const hwdecOptions = {
+      'auto': '自动硬解（auto-safe，低发热推荐）',
+      'mediacodec': '强制硬件解码（MediaCodec）',
+      'no': '纯软解兼容（绿屏/黑屏时使用）',
+    };
+    const bufferSizeOptions = {
+      8: '8 MB（极速省流·省内存）',
+      16: '16 MB（标准平衡·推荐）',
+      32: '32 MB（增强缓冲·更抗抖动）',
+      64: '64 MB（超大缓冲·极限抗卡顿）',
+    };
+    const audioBoostOptions = {
+      0: '原始音量（100% 标准输出）',
+      25: '清晰人声（+25% 对白更清晰）',
+      50: '沉浸增强（+50% 推荐·声音更洪亮）',
+      100: '极限双倍（+100% 极小音量片源放大）',
+    };
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
@@ -169,6 +197,27 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                         (v) => app.setPreferences(prefs.copyWith(seekStepSeconds: v)),
                       ),
                     ),
+                    _navRow(
+                      context,
+                      Icons.speed_rounded,
+                      '长按快进倍速',
+                      longPressSpeedOptions[prefs.longPressSpeed] ?? '${prefs.longPressSpeed}x',
+                      () => _pick(
+                        context,
+                        '长按快进倍速',
+                        longPressSpeedOptions,
+                        prefs.longPressSpeed,
+                        (v) => app.setPreferences(prefs.copyWith(longPressSpeed: v)),
+                      ),
+                    ),
+                    _switchRow(
+                      context,
+                      Icons.volume_down_rounded,
+                      '按键音效反馈',
+                      '遥控器移动焦点时播放清脆提示音',
+                      prefs.tvFocusSound,
+                      (v) => app.setPreferences(prefs.copyWith(tvFocusSound: v)),
+                    ),
                   ]),
                   _group(context, '外观与主题', [
                     _navRow(
@@ -197,6 +246,27 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                         (v) => app.setPreferences(prefs.copyWith(accentColorKey: v)),
                       ),
                     ),
+                    _navRow(
+                      context,
+                      Icons.grid_view_rounded,
+                      '剧库网格列数',
+                      tvColumnOptions[prefs.tvColumns] ?? '自适应',
+                      () => _pick(
+                        context,
+                        '剧库网格列数',
+                        tvColumnOptions,
+                        prefs.tvColumns,
+                        (v) => app.setPreferences(prefs.copyWith(tvColumns: v)),
+                      ),
+                    ),
+                    _switchRow(
+                      context,
+                      Icons.blur_on_rounded,
+                      '界面毛玻璃特效',
+                      '关闭可跳过实时模糊着色，大幅减免老旧电视 GPU 负载与掉帧',
+                      prefs.playerGlassEffect,
+                      (v) => app.setPreferences(prefs.copyWith(playerGlassEffect: v)),
+                    ),
                     _switchRow(
                       context,
                       Icons.text_fields_rounded,
@@ -205,6 +275,47 @@ class _TVSettingsScreenState extends State<TVSettingsScreen> {
                       prefs.largeText,
                       (v) => app.setPreferences(
                         prefs.copyWith(largeText: v),
+                      ),
+                    ),
+                  ]),
+                  _group(context, '音画与解码性能', [
+                    _navRow(
+                      context,
+                      Icons.memory_rounded,
+                      '硬件解码',
+                      hwdecOptions[prefs.hardwareDecoding] ?? '自动硬解',
+                      () => _pick(
+                        context,
+                        '硬件解码模式',
+                        hwdecOptions,
+                        prefs.hardwareDecoding,
+                        (v) => app.setPreferences(prefs.copyWith(hardwareDecoding: v)),
+                      ),
+                    ),
+                    _navRow(
+                      context,
+                      Icons.storage_rounded,
+                      '播放缓冲容量',
+                      bufferSizeOptions[prefs.playerBufferSizeMb] ?? '${prefs.playerBufferSizeMb} MB',
+                      () => _pick(
+                        context,
+                        '播放缓冲容量',
+                        bufferSizeOptions,
+                        prefs.playerBufferSizeMb,
+                        (v) => app.setPreferences(prefs.copyWith(playerBufferSizeMb: v)),
+                      ),
+                    ),
+                    _navRow(
+                      context,
+                      Icons.volume_up_rounded,
+                      '声音与人声增强',
+                      audioBoostOptions[prefs.audioBoost] ?? '原始音量',
+                      () => _pick(
+                        context,
+                        '声音与人声增强',
+                        audioBoostOptions,
+                        prefs.audioBoost,
+                        (v) => app.setPreferences(prefs.copyWith(audioBoost: v)),
                       ),
                     ),
                   ]),

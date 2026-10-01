@@ -334,9 +334,12 @@ class _TVLibraryScreenState extends State<TVLibraryScreen> {
                       ],
                     );
                   }
-                  final columns = dramaColumns(constraints.maxWidth);
+                  final columns = app.preferences.tvColumns > 0
+                      ? app.preferences.tvColumns
+                      : dramaColumns(constraints.maxWidth);
                   return CustomScrollView(
                     controller: _scroll,
+                    cacheExtent: 600,
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       if (app.history.isNotEmpty &&

@@ -95,6 +95,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
       GestureSensitivity.medium: '中',
       GestureSensitivity.high: '高',
     };
+    const longPressSpeedOptions = {
+      1.5: '1.5x 倍速',
+      2.0: '2.0x 倍速 (默认)',
+      3.0: '3.0x 极速',
+    };
+    const hwdecOptions = {
+      'auto': '自动硬解 (低功耗推荐)',
+      'mediacodec': '强制硬解 (MediaCodec)',
+      'no': '纯软解兼容',
+    };
+    const bufferSizeOptions = {
+      8: '8 MB (极速省流)',
+      16: '16 MB (标准推荐)',
+      32: '32 MB (增强缓冲)',
+      64: '64 MB (超大缓冲)',
+    };
+    const audioBoostOptions = {
+      0: '原始音量 (100%)',
+      25: '清晰人声 (+25%)',
+      50: '沉浸增强 (+50%)',
+      100: '极限双倍 (+100%)',
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -147,10 +169,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 _toggle(
+                  Icons.blur_on_rounded,
+                  '毛玻璃视觉特效',
+                  prefs.playerGlassEffect,
+                  (v) => app.setPreferences(prefs.copyWith(playerGlassEffect: v)),
+                ),
+                _toggle(
                   Icons.text_fields_rounded,
                   '大字模式',
                   prefs.largeText,
                   (v) => app.setPreferences(prefs.copyWith(largeText: v)),
+                ),
+              ]),
+              _group('音画与解码性能', [
+                _row(
+                  Icons.memory_rounded,
+                  '硬件解码',
+                  value: hwdecOptions[prefs.hardwareDecoding] ?? '自动硬解',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '硬件解码模式',
+                      subtitle: '遇到绿屏或画面异常时可尝试切换为软解兼容',
+                      value: prefs.hardwareDecoding,
+                      options: hwdecOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(hardwareDecoding: value),
+                      );
+                    }
+                  },
+                ),
+                _row(
+                  Icons.storage_rounded,
+                  '播放缓冲容量',
+                  value: bufferSizeOptions[prefs.playerBufferSizeMb] ?? '${prefs.playerBufferSizeMb} MB',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '播放缓冲容量',
+                      subtitle: '弱网环境下增大缓冲可显著降低卡顿',
+                      value: prefs.playerBufferSizeMb,
+                      options: bufferSizeOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(playerBufferSizeMb: value),
+                      );
+                    }
+                  },
+                ),
+                _row(
+                  Icons.volume_up_rounded,
+                  '声音与人声增强',
+                  value: audioBoostOptions[prefs.audioBoost] ?? '原始音量',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '声音与人声增强',
+                      subtitle: '针对低音量或对白不清的短剧进行数字人声增益',
+                      value: prefs.audioBoost,
+                      options: audioBoostOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(audioBoost: value),
+                      );
+                    }
+                  },
                 ),
               ]),
               _group('播放', [
@@ -224,6 +311,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (value != null) {
                       app.setPreferences(
                         app.preferences.copyWith(speed: value),
+                      );
+                    }
+                  },
+                ),
+                _row(
+                  Icons.fast_forward_rounded,
+                  '长按快进倍速',
+                  value: longPressSpeedOptions[prefs.longPressSpeed] ?? '${prefs.longPressSpeed}x',
+                  onTap: () async {
+                    final value = await pickOption(
+                      context,
+                      title: '长按快进倍速',
+                      value: prefs.longPressSpeed,
+                      options: longPressSpeedOptions,
+                    );
+                    if (value != null) {
+                      app.setPreferences(
+                        app.preferences.copyWith(longPressSpeed: value),
                       );
                     }
                   },

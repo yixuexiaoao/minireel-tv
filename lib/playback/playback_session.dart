@@ -46,7 +46,8 @@ final class PlaybackSession extends ChangeNotifier {
   bool get buffering => resolving || snapshot.buffering;
   Duration get position => snapshot.position;
   Duration get duration => snapshot.duration;
-  double get rate => temporaryBoost ? 2 : app.preferences.speed;
+  double get rate =>
+      temporaryBoost ? app.preferences.longPressSpeed : app.preferences.speed;
   bool get canPrevious => currentIndex > 0;
   bool get canNext => currentIndex + 1 < episodes.length;
   bool get ready =>

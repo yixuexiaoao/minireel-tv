@@ -172,6 +172,7 @@ class _TVFocusableState extends State<TVFocusable>
   late final AnimationController _shakeController;
   late final FocusNode _node;
   bool _ownsNode = false;
+  bool _wasFocused = false;
 
   @override
   void initState() {
@@ -262,6 +263,16 @@ class _TVFocusableState extends State<TVFocusable>
         listenable: Listenable.merge([_node, _controller, _shakeController]),
         builder: (context, _) {
           final focused = _node.hasFocus;
+          if (focused && !_wasFocused) {
+            _wasFocused = true;
+            try {
+              if (AppScope.read(context).preferences.tvFocusSound) {
+                SystemSound.play(SystemSoundType.click);
+              }
+            } catch (_) {}
+          } else if (!focused && _wasFocused) {
+            _wasFocused = false;
+          }
           if (focused && _controller.status != AnimationStatus.forward) {
             _controller.forward();
           } else if (!focused && _controller.status != AnimationStatus.reverse) {

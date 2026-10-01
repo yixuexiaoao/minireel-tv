@@ -62,7 +62,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _app = AppScope.read(context);
-    _engine = MediaKitEngine();
+    _engine = MediaKitEngine(preferences: _app.preferences);
     _device = DeviceControls(_engine);
     _session = PlaybackSession(app: _app, engine: _engine, drama: widget.drama);
     _hint = !_app.preferences.gestureHintSeen;
